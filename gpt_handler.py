@@ -1,9 +1,12 @@
 from openai import OpenAI
 import os
 
+print(os.getenv('OPENAI_API_KEY'))
+
 client = OpenAI(
-    api_key = os.getenv('OPENAI_API_KEY')
+    api_key = os.getenv('OPENAI_API_KEY'),
 )
+
 
 
 def gpt_message(predicted_class, confidence):

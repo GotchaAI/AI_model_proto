@@ -1,4 +1,4 @@
-![res_test](https://github.com/user-attachments/assets/a7430315-a42f-47ff-acd2-64ec7c0185b0)# Get Started
+# Get Started
 
 이 프로젝트는 네이버 Clova AI 팀에서 2019년 개발한 CRAFT 모델을 사용하여 만들어졌습니다.
 

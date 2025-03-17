@@ -1,0 +1,10 @@
+easyocr==1.7.2
+fastapi==0.115.11
+matplotlib==3.10.1
+numpy==2.1.3
+openai==1.66.3
+pillow==11.1.0
+python-multipart==0.0.20
+quickdraw==1.0.0
+tensorflow==2.19.0
+uvicorn==0.34.0

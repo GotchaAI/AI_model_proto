@@ -34,8 +34,6 @@ async def predict_endpoint(file: UploadFile = File(...)):
 
 
 
-
-
     # `image_preprocessing.py`에서 전처리 수행
     img_array = preprocess_image(contents)
 
@@ -46,15 +44,15 @@ async def predict_endpoint(file: UploadFile = File(...)):
     predicted_class = classes[pred_label]
     confidence = float(pred[0][pred_label])
 
-    message = gpt_message(predicted_class, confidence)
+   #  message = gpt_message(predicted_class, confidence)
 
 
     # 4) 결과 반환
     return {
         "filename": file.filename,
         "predicted_class": predicted_class,
-        "confidence": confidence,
-        "message" : message
+        "confidence": confidence
+     #   "message" : message
     }
 
 if __name__ == "__main__":

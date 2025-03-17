@@ -28,10 +28,11 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
         results = reader.readtext(np.array(img))
 
         for bbox, text, prob in results:
-            print(f"인식된 테스트: {text}")
-            bbox = [(int(point[0]), int(point[1])) for point in bbox] 
-            draw.polygon(bbox, fill = 255)
-            show_image(img) # 마스킹 후 이미지 출력 (debug)
+            print(f"인식된 테스트: {text}, 확률 : {prob}")
+            if prob > 0.8:
+                bbox = [(int(point[0]), int(point[1])) for point in bbox] 
+                draw.polygon(bbox, fill = 255)
+                show_image(img) # 마스킹 후 이미지 출력 (debug)
 
 
         # 리사이즈 (모델 입력 크기와 동일해야 함)

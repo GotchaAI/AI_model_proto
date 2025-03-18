@@ -14,7 +14,7 @@ import config
 # ----------------------
 print("모델 로딩 중...")
 model = tf.keras.models.load_model(config.MODEL_PATH)
-classes = ["cat", "dog"]
+classes = [image for image in config.CATEGORIES]
 print("모델 로드 완료!")
 
 # ----------------------    

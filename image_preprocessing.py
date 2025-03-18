@@ -1,20 +1,20 @@
 import io
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
-from craft import CRAFT
-import cv2
 
+from PIL import Image, ImageDraw
 from fastapi import HTTPException
 import config
-from collections import OrderedDict
-from text_recog import test_net, copyStateDict
+from craft_text_detector import (
+    read_image,
+    load_craftnet_model,
+    load_refinenet_model,
+    get_prediction,
+    empty_cuda_cache
+)
 
-model = CRAFT()
-
-print("Loading model...")
-model.load_state_dict(copyStateDict(torch.load('craft_mlt_25k.pth', map_location='cpu')))
-model.eval()
+refine_net = load_refinenet_model(cuda=config.CUDA)
+craft_net = load_craftnet_model(cuda=config.CUDA)
 
 
 
@@ -29,32 +29,49 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
     """
 
     try:
+        # 이미지 로드 및 흑백 변환
+        img = Image.open(io.BytesIO(image_bytes)).convert('L')
+        show_image(img)
 
-        # byte data to NumPy ndarray
-        image_array = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(image_array, cv2.IMREAD_GRAYSCALE)  # 흑백 변환
 
-        bboxes, _, _ = test_net(
-            net=model,
-            image=img, 
-            text_threshold=config.TEXT_THRESHOLD, 
-            link_threshold=config.LINK_THRESHOLD, 
-            low_text=config.LOW_TEXT, 
-            cuda=config.CUDA, 
-            poly=False
+
+        # read image for craft
+        img_data = read_image(image_bytes)
+
+
+        print("텍스트 검출/마스킹 중...")
+        # perform text prediction
+        prediction_res = get_prediction(
+            image = img_data,
+            craft_net=craft_net,
+            refine_net=refine_net,
+            text_threshold=config.TEXT_THRESHOLD,
+            link_threshold=config.LINK_THRESHOLD,
+            low_text=config.LOW_TEXT,
+            cuda=config.CUDA,
+            long_size=config.LONG_SIZE
         )
 
-        for box in bboxes:
-            x_min, y_min, x_max, y_max = map(int, box)
-            cv2.rectangle(img, (x_min, y_min), (x_max, y_max), (255, 255, 255), -1)  # 흰색으로 채움
+        show_image(img)
+        boxes= prediction_res['boxes']
+        draw = ImageDraw.Draw(img)
+        for box in boxes:
+            box = [(int(point[0]), int(point[1])) for point in box]
+
+            draw.polygon(box, fill=255)
+        show_image(img)
+
+
+        print('텍스트 검출/마스킹 완료.')
+        print(prediction_res['times'])
 
 
         # 리사이즈 (모델 입력 크기와 동일해야 함)
-        img = cv2.resize(img, image_size, interpolation=cv2.INTER_LINEAR)
+        img = img.resize(image_size)
 
 
         # 3) NumPy 배열 변환 및 정규화
-        img_array = img.astype(np.float32) / 255.0  # 스케일링 (0~1)
+        img_array = np.array(img) / 255.0  # 스케일링 (0~1)
 
         # 4) CNN 입력 차원 확장 (28,28,1) -> (1,28,28,1)
         img_array = np.expand_dims(img_array, axis=-1)  # (28,28,1)
@@ -64,3 +81,14 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"이미지 처리 오류: {str(e)}")
     
+
+    
+def show_image(image):
+    """
+    Args:
+        image (PIL.Image): 출력할 이미지
+    """
+    plt.figure(figsize=(10, 6))
+    plt.imshow(image)
+    plt.axis("off")
+    plt.show()

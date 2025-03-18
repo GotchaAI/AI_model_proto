@@ -13,7 +13,7 @@ import config
 # 저장된 모델 로드
 # ----------------------
 print("모델 로딩 중...")
-model = keras.models.load_model(config.MODEL_PATH)
+model = tf.keras.models.load_model(config.MODEL_PATH)
 classes = ["cat", "dog"]
 print("모델 로드 완료!")
 

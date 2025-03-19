@@ -61,29 +61,30 @@ epochs
 
 model = keras.Sequential([
     layers.Conv2D(
-        filter=32, 
+        filters=32, 
         kernel_size=(3,3), 
         activation='relu', 
-        input_shape=(config.IMAGE_SIZE[0],config.IMAGE_SIZE[1],1)
+        input_shape=(config.IMAGE_SIZE[0],config.IMAGE_SIZE[1],1),
+        padding='same'
     ),
     layers.BatchNormalization(),
     layers.MaxPooling2D((2,2)), 
 
     
-    layers.Conv2D(64, (3,3), activation='relu'),
+    layers.Conv2D(64, (3,3), activation='relu', padding='same'),
     layers.BatchNormalization(),
     layers.MaxPooling2D((2,2)),
 
-    layers.Conv2D(128, (3,3), activation='relu'),
+    layers.Conv2D(128, (3,3), activation='relu', padding='same'),
     layers.BatchNormalization(),
     layers.MaxPooling2D((2,2)),
 
-    layers.Conv2D(256, (3,3), activation='relu'),
+    layers.Conv2D(256, (3,3), activation='relu',padding='same'),
     layers.BatchNormalization(),
 
     layers.Flatten(),
     layers.Dense(128, activation='relu'),
-    layers.dropout(0.5), # overfitting 방지지
+    layers.Dropout(0.1), # overfitting 방지지
     layers.Dense(len(categories), activation='softmax')  # n개의 클래스
 ])
 

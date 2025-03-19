@@ -19,7 +19,7 @@ X_list = [] # Datas
 y_list = [] # Labels
 
 for label_id, label_name in enumerate(categories):
-    data_group = QuickDrawDataGroup(label_name, max_drawings=config.MAX_DRAWINGS)
+    data_group = QuickDrawDataGroup(label_name, max_drawings=config.MAX_DRAWINGS, recognized=True)
     drawings = data_group.drawings
     
     # 이미지 변환

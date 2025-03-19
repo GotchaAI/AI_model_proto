@@ -6,6 +6,9 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torchvision import transforms as T
 import config
+from torch.utils.tensorboard import SummaryWriter
+
+
 
 def train_model(model, train_loader, val_loader, num_epochs=10, lr=0.001):
     """
@@ -23,6 +26,7 @@ def train_model(model, train_loader, val_loader, num_epochs=10, lr=0.001):
     optimizer = optim.Adam(model.parameters(), lr=lr) # 신경망 옵티마이저 설정 : adam
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.85) # lr_scheduler: 일정스텝마다 학습률을 감소시킴
     criterion = nn.NLLLoss() # LogSoftmax 출력을 위한 손실 함수
+    writer = SummaryWriter(log_dir='runs/experiment')
 
     for epoch in range(num_epochs):
         print(f"EPOCH {epoch + 1}/{num_epochs} Training..")
@@ -33,7 +37,7 @@ def train_model(model, train_loader, val_loader, num_epochs=10, lr=0.001):
         model.train()
         train_loss, correct, total = 0, 0, 0 # 전체 훈련 손실, accuracy 계산을 위한 correct/total
 
-        for images, labels in train_loader:
+        for i, (images, labels) in enumerate(train_loader):
             images, labels = images.to(device), labels.to(device) # device로 데이터 이동
 
             optimizer.zero_grad() # set Gradient to Zero
@@ -46,7 +50,13 @@ def train_model(model, train_loader, val_loader, num_epochs=10, lr=0.001):
             correct += (outputs.argmax(1) == labels).sum().item() # 예측값 맞는지 카운트
             total += labels.size(0) # 샘플 갯수 누적
 
+            writer.add_scalar('Loss/train', loss.item(), epoch * len(train_loader) + i)
+
+        avg_loss = train_loss / len(train_loader)
         train_acc = 100 * correct / total # accuracy 업데이트
+
+        writer.add_scalar('Loss/epoch', avg_loss, epoch)
+        writer.add_scalar('Accuracy/epoch', train_acc, epoch)
 
         # ----------------------------
         # Validation Loop
@@ -108,27 +118,27 @@ model = torch_models.CNNModel(output_classes=len(config.CATEGORIES))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-for name in config.CATEGORIES:
-    # Load Dataset
-    dataset = torch_datamodule.QuickDrawDataSet(name=name, transform = encode_image)
 
-    # train, val split
-    train_size = int(0.8 * len(dataset))
-    val_size = len(dataset) - train_size
-    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+# Load Dataset
+dataset = torch_datamodule.QuickDrawAllDataSet(max_drawings=1000, transform = encode_image)
 
-    # init DataLoader
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+# train, val split
+train_size = int(0.8 * len(dataset))
+val_size = len(dataset) - train_size
+train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
 
-
-    # Train Model
-    train_model(model, train_loader, val_loader)
+# init DataLoader
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
 
-    # Test Model
-    test_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_model(model, test_loader)
+# Train Model
+train_model(model, train_loader, val_loader)
+
+
+# Test Model
+test_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+test_model(model, test_loader)
 
 # Save Model
 torch.save(model.state_dict(), "quickdraw_cnn.pth")

@@ -21,7 +21,7 @@ class QuickDrawAllDataSet(torch.utils.data.Dataset):
 
     
     def __len__(self):
-        return len(self.data)
+        return len(self.data_index)
 
     # 
     def __getitem__(self, index: int):
@@ -43,7 +43,7 @@ class QuickDrawAllDataSet(torch.utils.data.Dataset):
 
 
 # 2. 하나의 클래스에 대해서만 가져오는 DataSet
-class QuickDrawDataSet(torch.utils.Dataset):
+class QuickDrawDataSet(torch.utils.data.Dataset):
     def __init__(self, name, max_drawings=1000, transform=None):
         self.index = config.CATEGORIES.index(name) # 해당 클래스의 idx 가져옴
         self.data = []

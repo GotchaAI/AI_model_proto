@@ -15,33 +15,31 @@ print("QuickDraw 데이터 로딩 중 ...")
 
 categories = config.CATEGORIES
 
-X_list = []
-y_list = []
+X_list = [] # Datas
+y_list = [] # Labels
 
 for label_id, label_name in enumerate(categories):
     data_group = QuickDrawDataGroup(label_name, max_drawings=config.MAX_DRAWINGS)
     drawings = data_group.drawings
     
     # 이미지 변환
-    images = [
+    images = np.array([
         np.array(d.get_image(stroke_width=2)
                  .resize((config.IMAGE_SIZE[0], config.IMAGE_SIZE[1]))
                  .convert("L"))
         for d in drawings
-    ]
+    ])
     
-    images = np.array(images)
     labels = np.full(len(images), label_id, dtype=np.int32)
     
     X_list.append(images)
     y_list.append(labels)
 
-X = np.concatenate(X_list, axis=0)
-y = np.concatenate(y_list, axis=0)
+X = np.vstack(X_list).astype("float32") / 255.0
+y = np.hstack(y_list).astype("int32")
 
 
-# 스케일링 및 차원 확장 (CNN 입력용)
-X = X / 255.0
+# 차원 확장
 X = np.expand_dims(X, axis=-1)  # (4000, 28, 28, 1)
 
 # ----------------------
@@ -52,13 +50,40 @@ X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_st
 # ----------------------
 # CNN 모델 정의
 # ----------------------
+
+"""
+max_drawings
+image_size
+batch_size
+epochs
+"""
+
+
 model = keras.Sequential([
-    layers.Conv2D(32, (3,3), activation='relu', input_shape=(config.IMAGE_SIZE[0],config.IMAGE_SIZE[1],1)),
-    layers.MaxPooling2D((2,2)),
+    layers.Conv2D(
+        filter=32, 
+        kernel_size=(3,3), 
+        activation='relu', 
+        input_shape=(config.IMAGE_SIZE[0],config.IMAGE_SIZE[1],1)
+    ),
+    layers.BatchNormalization(),
+    layers.MaxPooling2D((2,2)), 
+
+    
     layers.Conv2D(64, (3,3), activation='relu'),
+    layers.BatchNormalization(),
     layers.MaxPooling2D((2,2)),
+
+    layers.Conv2D(128, (3,3), activation='relu'),
+    layers.BatchNormalization(),
+    layers.MaxPooling2D((2,2)),
+
+    layers.Conv2D(256, (3,3), activation='relu'),
+    layers.BatchNormalization(),
+
     layers.Flatten(),
-    layers.Dense(64, activation='relu'),
+    layers.Dense(128, activation='relu'),
+    layers.dropout(0.5), # overfitting 방지지
     layers.Dense(len(categories), activation='softmax')  # n개의 클래스
 ])
 

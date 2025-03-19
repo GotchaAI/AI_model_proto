@@ -103,31 +103,32 @@ encode_image = T.Compose([ # 이미지 데이터 전처리 : 32x32 크기, 정�
     T.Normalize(0.5, 0.5)
 ])
 
-# Load Dataset
-dataset = torch_datamodule.QuickDrawAllDataSet(transform = encode_image)
-
-# train, val split
-train_size = int(0.8 * len(dataset))
-val_size = len(dataset) - train_size
-train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
-
-# init DataLoader
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-
-
 # Load CNN Model
 model = torch_models.CNNModel(output_classes=len(config.CATEGORIES))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-# Train Model
-train_model(model, train_loader, val_loader)
+for name in config.CATEGORIES:
+    # Load Dataset
+    dataset = torch_datamodule.QuickDrawDataSet(name=name, transform = encode_image)
+
+    # train, val split
+    train_size = int(0.8 * len(dataset))
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+
+    # init DataLoader
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
 
-# Test Model
-test_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_model(model, test_loader)
+    # Train Model
+    train_model(model, train_loader, val_loader)
+
+
+    # Test Model
+    test_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    test_model(model, test_loader)
 
 # Save Model
 torch.save(model.state_dict(), "quickdraw_cnn.pth")

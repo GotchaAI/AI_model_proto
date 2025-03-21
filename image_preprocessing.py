@@ -1,24 +1,33 @@
 import io
-import numpy as np
 import matplotlib.pyplot as plt
-
+from torchvision import transforms as T
 from PIL import Image, ImageDraw
 from fastapi import HTTPException
 import config
+import torch
 from craft_text_detector import (
     read_image,
     load_craftnet_model,
     load_refinenet_model,
-    get_prediction,
-    empty_cuda_cache
+    get_prediction
 )
 
+print("CRAFT 모델 로딩중..")
 refine_net = load_refinenet_model(cuda=config.CUDA)
 craft_net = load_craftnet_model(cuda=config.CUDA)
+print("CRAFT 모델 로딩 완료!")
+
+encode_image = T.Compose([
+    T.Resize((32, 32)),
+    T.ToTensor(),
+    #   T.Normalize(mean=[0.485, 0.456, 0.406],
+    #               std=[0.229, 0.224, 0.225]),
+    T.Normalize(0.5, 0.5)
+])
 
 
 
-def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], config.IMAGE_SIZE[1])):
+def preprocess_image(image_bytes: bytes):
     """
     - 업로드된 이미지 파일의 바이트 데이터를 받아 처리
     - 1. 흑백 변환
@@ -51,24 +60,26 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
             cuda=config.CUDA,
             long_size=config.LONG_SIZE
         )
-
-        print(prediction_res['boxes'])
+        boxes= prediction_res['boxes']
         print('텍스트 검출 완료.')
-        print('텍스트 검출 걸린 시간: ' + str(sum(prediction_res['times'].values())))
+        print(f'텍스트 검출 걸린 시간: {sum(prediction_res["times"].values()):.2f}초.')
 
 
-        show_image(img)
+
+
+        # show_image(img)
         boxes= prediction_res['boxes']
         draw = ImageDraw.Draw(img)
-        for box in boxes:
+        for i, box in enumerate(boxes):
+            print(f"바운딩 박스 {i+1} 마스킹")
             box = [(int(point[0]), int(point[1])) for point in box]
-
+            print(box)
             draw.polygon(box, fill=(255, 255, 255))
-        show_image(img)
+        # show_image(img)
 
 
 
-        return img
+        return encode_image(img).unsqueeze(0).to("cuda" if torch.cuda.is_available() else "cpu")
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"이미지 처리 오류: {str(e)}")

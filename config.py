@@ -349,6 +349,7 @@ CATEGORIES = [
     "zebra",
     "zigzag",
     ]
+
 # QuickDraw 데이터 설정
 MAX_DRAWINGS = 5000  # 각 클래스(고양이, 개)별 샘플 개수
 IMAGE_SIZE = (32 ,32)  # 이미지 크기 (너비, 높이)
@@ -358,7 +359,7 @@ BATCH_SIZE = 32
 EPOCHS = 5
 
 # 모델 저장 경로
-MODEL_PATH = "./model/picture_model.h5"
+MODEL_PATH = "./model/picture_model.pth"
 
 
 

@@ -1,24 +1,33 @@
 import io
-import numpy as np
 import matplotlib.pyplot as plt
-
+from torchvision import transforms as T
 from PIL import Image, ImageDraw
 from fastapi import HTTPException
 import config
+import torch
 from craft_text_detector import (
     read_image,
     load_craftnet_model,
     load_refinenet_model,
-    get_prediction,
-    empty_cuda_cache
+    get_prediction
 )
 
+print("CRAFT 모델 로딩중..")
 refine_net = load_refinenet_model(cuda=config.CUDA)
 craft_net = load_craftnet_model(cuda=config.CUDA)
+print("CRAFT 모델 로딩 완료!")
+
+encode_image = T.Compose([
+    T.Resize((32, 32)),
+    T.ToTensor(),
+    #   T.Normalize(mean=[0.485, 0.456, 0.406],
+    #               std=[0.229, 0.224, 0.225]),
+    T.Normalize(0.5, 0.5)
+])
 
 
 
-def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], config.IMAGE_SIZE[1])):
+def preprocess_image(image_bytes: bytes):
     """
     - 업로드된 이미지 파일의 바이트 데이터를 받아 처리
     - 1. 흑백 변환
@@ -30,8 +39,8 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
 
     try:
         # 이미지 로드 및 흑백 변환
-        img = Image.open(io.BytesIO(image_bytes)).convert('L')
-        show_image(img)
+        img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        # show_image(img)
 
 
 
@@ -39,7 +48,7 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
         img_data = read_image(image_bytes)
 
 
-        print("텍스트 검출/마스킹 중...")
+        print("텍스트 검출 중...")
         # perform text prediction
         prediction_res = get_prediction(
             image = img_data,
@@ -51,32 +60,26 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
             cuda=config.CUDA,
             long_size=config.LONG_SIZE
         )
+        boxes= prediction_res['boxes']
+        print('텍스트 검출 완료.')
+        print(f'텍스트 검출 걸린 시간: {sum(prediction_res["times"].values()):.2f}초.')
 
-        show_image(img)
+
+
+
+        # show_image(img)
         boxes= prediction_res['boxes']
         draw = ImageDraw.Draw(img)
-        for box in boxes:
+        for i, box in enumerate(boxes):
+            print(f"바운딩 박스 {i+1} 마스킹")
             box = [(int(point[0]), int(point[1])) for point in box]
-
-            draw.polygon(box, fill=255)
-        show_image(img)
-
-
-        print('텍스트 검출/마스킹 완료.')
-        print(prediction_res['times'])
+            print(box)
+            draw.polygon(box, fill=(255, 255, 255))
+        # show_image(img)
 
 
-        # 리사이즈 (모델 입력 크기와 동일해야 함)
-        img = img.resize(image_size)
 
-
-        # 3) NumPy 배열 변환 및 정규화
-        img_array = np.array(img) / 255.0  # 스케일링 (0~1)
-
-        # 4) CNN 입력 차원 확장 (28,28,1) -> (1,28,28,1)
-        img_array = np.expand_dims(img_array, axis=-1)  # (28,28,1)
-        img_array = np.expand_dims(img_array, axis=0)   # (1,28,28,1)
-        return img_array
+        return encode_image(img).unsqueeze(0).to("cuda" if torch.cuda.is_available() else "cpu")
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"이미지 처리 오류: {str(e)}")

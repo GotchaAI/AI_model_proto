@@ -30,8 +30,8 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
 
     try:
         # 이미지 로드 및 흑백 변환
-        img = Image.open(io.BytesIO(image_bytes)).convert('L')
-        show_image(img)
+        img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        # show_image(img)
 
 
 
@@ -39,7 +39,7 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
         img_data = read_image(image_bytes)
 
 
-        print("텍스트 검출/마스킹 중...")
+        print("텍스트 검출 중...")
         # perform text prediction
         prediction_res = get_prediction(
             image = img_data,
@@ -52,31 +52,23 @@ def preprocess_image(image_bytes: bytes, image_size=(config.IMAGE_SIZE[0], confi
             long_size=config.LONG_SIZE
         )
 
+        print(prediction_res['boxes'])
+        print('텍스트 검출 완료.')
+        print('텍스트 검출 걸린 시간: ' + str(sum(prediction_res['times'].values())))
+
+
         show_image(img)
         boxes= prediction_res['boxes']
         draw = ImageDraw.Draw(img)
         for box in boxes:
             box = [(int(point[0]), int(point[1])) for point in box]
 
-            draw.polygon(box, fill=255)
+            draw.polygon(box, fill=(255, 255, 255))
         show_image(img)
 
 
-        print('텍스트 검출/마스킹 완료.')
-        print(prediction_res['times'])
 
-
-        # 리사이즈 (모델 입력 크기와 동일해야 함)
-        img = img.resize(image_size)
-
-
-        # 3) NumPy 배열 변환 및 정규화
-        img_array = np.array(img) / 255.0  # 스케일링 (0~1)
-
-        # 4) CNN 입력 차원 확장 (28,28,1) -> (1,28,28,1)
-        img_array = np.expand_dims(img_array, axis=-1)  # (28,28,1)
-        img_array = np.expand_dims(img_array, axis=0)   # (1,28,28,1)
-        return img_array
+        return img
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"이미지 처리 오류: {str(e)}")
